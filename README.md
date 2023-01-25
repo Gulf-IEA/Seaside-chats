@@ -12,6 +12,10 @@ A space for us to define our best practices for coding, data management, project
 
 TBD
 
+| Meeting number | Date | Topic |
+| --- |
+| 1 | TBD | Introduction |
+
 **Recommending a topic for future seaside chats:**
 
 To suggest a topic for a future seaside chat, go to the issues tab, and create a new issue with a brief description of what you want to cover and maybe a date(s) that would work best for you.
