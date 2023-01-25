@@ -13,7 +13,7 @@ A space for us to define our best practices for coding, data management, project
 TBD
 
 | Meeting number | Date | Topic |
-| --- |
+| --- | --- | --- |
 | 1 | TBD | Introduction |
 
 **Recommending a topic for future seaside chats:**
