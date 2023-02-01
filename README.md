@@ -1,6 +1,8 @@
 # Seaside-chats
 Repository for resources and other information from our seaside chat meetings
 
+[Link to Meeting Notes](https://docs.google.com/document/d/1j1d0RV8LiowwbMv7FTPrEKWVE_NzCjAXjXxYIBEiqa4/edit#heading=h.5hjbkx6s0t1c)
+
 **GOALS:**
 
 Foster a collaborative environment where everyone in the IEA can join other projects
