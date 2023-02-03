@@ -20,4 +20,4 @@ TBD
 
 **Recommending a topic for future seaside chats:**
 
-To suggest a topic for a future seaside chat, go to the issues tab, and create a new issue with a brief description of what you want to cover and maybe a date(s) that would work best for you.
+To suggest a topic for a future seaside chat, go to the discussions tab, and create a new discussion in the Ideas (lightbulb)section with a brief description of what you want to cover and maybe a date(s) that would work best for you.
