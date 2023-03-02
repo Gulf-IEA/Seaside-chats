@@ -5,18 +5,19 @@ Repository for resources and other information from our seaside chat meetings
 
 **GOALS:**
 
-Foster a collaborative environment where everyone in the IEA can join other projects.
-Space for learning and sharing tools, code, etc.
-Do our IEA work more collaboratively, and automate where we can so that new members can easily join projects
-A space for us to define our best practices for coding, data management, project workflow, and publishing 
+* Foster a collaborative environment where everyone in the IEA can join other projects.
+* Space for learning and sharing tools, code, etc.
+* Do our IEA work more collaboratively, and automate where we can so that new members can easily join projects
+* A space for us to define our best practices for coding, data management, project workflow, and publishing 
 
 **Seaside chat schedule:**
 
-TBD
+First & Third Friday of every month from 1-3 pm
 
 | Meeting number | Date | Topic |
 | --- | --- | --- |
-| 1 | TBD | Introduction |
+| 1 | 2/17/23 | Introduction |
+| 2 | 3/3/23 | Kim Bastille presents: Automation Framework from the NE SOE Report |
 
 **Recommending a topic for future seaside chats:**
 
