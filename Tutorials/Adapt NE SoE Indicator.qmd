@@ -1,0 +1,613 @@
+---
+title: "Adapt NE SoE Indicator"
+format: 
+   html: 
+     toc: true
+     toc-location: left
+     theme: flatly
+author: "Brittany Troast"
+code-fold: true
+self-contained: true
+message: false
+error: false
+warning: false
+---
+
+This is a tutorial providing guidance on how to adapt an indicator from the Northeast State of the Ecosystem report for use in GoM IEA products. This tutorial uses the "Seasonal SST Anomaly Indicator" and reproduces it for the Gulf of Mexico. Data are provided from the NOAA Optimal Interpolation SST High Resolution Dataset ([here](https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html)).
+
+This tutorial is not an example of a "perfect process" but instead is an outline of my thought process of finding an indicator I would like to replicate, hunting down the code in the SoE repo, and the steps I had to complete for replication. I hope detailing this process will help others to adapt indicators/code from the SoE and other resources.
+
+## Steps when first becoming acquainted
+
+### 1. View NE SoE report to determine indicator to replicate
+
+[NE State of the Ecosystem Report 2022](https://repository.library.noaa.gov/view/noaa/38948)
+
+![Indicator from the NE SoE 2022 report that I wished to duplicate for the GoM.](images/SST%20Anom%20NE_SoE.png){fig-align="center"}
+
+### 2. Go to GitHub site of the group that creates the NE SoE report to search for code
+
+-   Searched "GitHub NOAA NE SoE" and found the "Ecosystem Dynamics and Assessment Branch" GitHub ([EDAB GitHub](https://github.com/NOAA-EDAB))
+
+-   Their GitHub hosts the repo "SOE-NEFMC" where the NE SoE report is housed
+
+    ![Screenshot of the EDAB Github. The group that creates the NE SoE Report.](images/EDAB%20GitHub.png)
+
+-   Inside the "SOE-NEFMC" repo there are many files. I know that ".Rmd" and ".Qmd" are Rmardown and Quarto file extensions, respectively. These file types are used to create reports, so I knew that this was the code that was used to create the SoE report.
+
+    ![The .Rmd file that creates the NE SoE report.](images/SoE%20Rmd%20file.png)
+
+-   I searched through the .Rmd document code using Ctrl+F from text in the report to find where the code for the indicator is.
+
+    ![Top: Copied text from NE SoE Report. Bottom: Corresponding text in code.](images/Search%20Find%20Text.png)
+
+-   This gave me the name of the indicator throughout their code is "seasonal-sst-anom-gridded" and gave me more information for my search on the actual code to analyze and plot the data.
+
+### 3. Search for the "seasonal-sst-anom-gridded" code in the ecodata repository (still in the EDAB GitHub)
+
+-   We learned when Kim Bastille spoke to us that the "ecodata" package was created to house their data and the functions that sort, format, analyze, and plot their indicators.
+
+-   As seen earlier, the ecodata repo is on their GitHub and houses all that code.
+
+![A screenshot of the ecodata repo and the choices of folders I had to search through.](images/Ecodata%20File%20SS-04.png)
+
+-   I first went to the "chunk-scripts" folder because Kim had mentioned that this is created using the 'readLines' function to take the script "chunks" for a specific indicator and puts them in this folder. In the folder I found a list of what appears to be all separate indicators and thought this would have all of the code I needed.
+
+    ![List of indicators in the "script-chunks" folder in the ecodata repo.](images/Indicator%20Code%20Chunks.png)
+
+-   I installed the ecodata package that contains the necessary data and functions to run the code that is in that "LTL_MAB.Rmd-seasonal-sst-anom-gridded.R" file.
+
+    ![Example showing the datasets that are included in the "ecodata" package relating to their indicators.](images/ecodata_data.gif)
+
+-   However, ran I copy and pasted the code and ran it locally it would not work. I kept getting "Error: x.shade.min" not found. Letting me know that I was missing some piece of the puzzle.
+
+-   I continued to search through the ecodata repo to find other locations where the code for the "seasonal-sst-anom-gridded" indicator may be
+
+-   I found a docs folder that had LTL files which matched with the "LTL" in the indicator name of the chunks-script and looked there
+
+    ![The HTML document I looked at for more information on the indicator I was searching for.](images/LTL%20Doc.png)
+
+-   There is a .Rmd and .html file. The .Rmd file (RMarkdown) file creates the HTML file. I decided to first view the HTML file because it was easier to see the indicators, then used the .Rmd to view the code.
+
+::: callout-note
+## Previewing HTML files from GitHub
+
+TIP: If you just click the .html file you will see the raw HTML code and not the website. However you can preview the rendered HTML website by pasting this text "[http://htmlpreview.**github**.io/?](http://htmlpreview.github.io/?)" before the url to the LTL_MAB.html document.
+
+```         
+-   Preview Text + .html URL = Website preview
+-   Preview Text = http://htmlpreview.github.io/?
+-   HTML Text = https://github.com/NOAA-EDAB/ecodata/blob/master/docs/LTL_MAB.html
+-   Preview Link = http://htmlpreview.github.io/?https://github.com/NOAA-EDAB/ecodata/blob/master/docs/LTL_MAB.html
+```
+:::
+
+![The raw HTML code after clicking on the "LTL_MAB.html" in the docs repo. The URL at the top is what you add onto the preview code mentioned in text.](images/HTML%20Raw%20Code.png)
+
+-   This document once again shows the indicator that I was looking for, so I looked at the doc for any additional code that I may have been missing from my first try.
+
+-   To look at the code I looked at the .Rmd version of that document. Reminder the .Rmd holds the code to run the analysis and the .html holds the code to put it together in a document.
+
+-   When I was scrolling through the .Rmd document looking for the chunk addressing SST anomaly, I found code addressing the missing variable that was part of the previous error messages "x.shade.min". It was part of a setup code chunk in the beginning of the document which was not included in the previous code I explored.
+
+    ![Setup code chunk at the beginning of a document that helps define some variables for several indicators throughout the document.](images/Xshademin.png)
+
+-   For this indicator I needed that code chunk so I copy/pasted this chunk before the previous code chunk and tried to recreate the indicator from the report.
+
+::: callout-note
+## Replicate First
+
+-   TIP: When adapting/manipulating code I recommend first reproducing it as is to make sure the code is working and then making changes to it as you need.
+:::
+
+-   Combining the setup code and the indicator code gave me this.
+
+```{r, message=F, warning=F}
+library(tidyverse)
+library(ecodata)
+library(sf)
+
+### SETUP CODE FROM LTL_MAB.RmD
+# Set lat/lon window for maps
+xmin = -77
+xmax = -65
+ymin = 36
+ymax = 45
+xlims <- c(xmin, xmax)
+ylims <- c(ymin, ymax)
+#Time series constants
+shade.alpha <- 0.3
+shade.fill <- "lightgrey"
+lwd <- 1
+pcex <- 2
+trend.alpha <- 0.5
+trend.size <- 2
+hline.size <- 1
+hline.alpha <- 0.35
+hline.lty <- "dashed"
+label.size <- 5
+hjust.label <- 1.5
+letter_size <- 4
+feeding.guilds <- c("Apex Predator","Piscivore","Planktivore","Benthivore","Benthos")
+x.shade.min <- 2012
+x.shade.max <- 2022
+#Function for custom ggplot facet labels
+label <- function(variable,value){
+  return(facet_names[value])
+}
+
+### ORIGINAL CODE FROM "LTL_MAB.Rmd-seasonal-sst-anom-gridded.R" IN SCRIPT-CHUNKS 
+#EPU shapefile
+# ne_epu_sf <- ecodata::epu_sf %>%  dplyr::filter(EPU %in% c("GOM","GB"))
+ne_epu_sf <- ecodata::epu_sf[4,4] #MAB SET
+
+# View(ecodata::epu_sf)
+
+#Map line parameters
+map.lwd <- 0.4
+# Set lat/lon window for maps
+xmin = -73
+xmax = -65
+ymin = 39
+ymax = 45
+xlims <- c(xmin, xmax)
+ylims <- c(ymin, ymax)
+sst <- ecodata::seasonal_sst_anomaly_gridded  #WHERE YOU LOAD THE DATA FROM ECODATA
+sst$Season <- factor(sst$Season, levels = c("Winter",
+                                            "Spring",
+                                            "Summer",
+                                            "Fall"))
+sst<- sst %>% dplyr::mutate(Value = replace(Value, Value > 5, 5))
+sst_map <- 
+  ggplot2::ggplot() +
+  ggplot2::geom_tile(data = sst, aes(x = Longitude, y = Latitude,fill = Value)) +
+  ggplot2::geom_sf(data = ecodata::coast, size = map.lwd) +
+  ggplot2::geom_sf(data = ne_epu_sf, fill = "transparent", size = map.lwd) +
+  ggplot2::scale_fill_gradient2(name = "Temp./nAnomaly (C)",
+                       low = scales::muted("blue"),
+                       mid = "white",
+                       high = scales::muted("red"),
+                       limits = c(-5,5), 
+                       labels = c("<-5", "-2", "0", "2", ">5")) +
+  ggplot2::coord_sf(xlim = xlims, ylim = ylims) +
+  ggplot2::facet_wrap(Season~.) +
+  ecodata::theme_map() +
+  ggplot2::ggtitle("SST anomaly (2022)") +
+  ggplot2::xlab("Longitude") +
+  ggplot2::ylab("Latitude") +
+  ggplot2::theme(panel.border = element_rect(colour = "black", fill=NA, size=0.75),
+        legend.key = element_blank(),
+        axis.title = element_text(size = 11),
+        strip.background = element_blank(),
+        strip.text=element_text(hjust=0),
+        axis.text = element_text(size = 8), 
+        axis.title.y = element_text(angle = 90))+
+  ecodata::theme_title()
+
+sst_map 
+
+```
+
+### 4. Change Indicator to Gulf of Mexico
+
+-   Now that I had working code I began examining the code for the pieces that change the geographic area for analyses and plotting to change that to the GoM.
+
+-   Of the above code, here are the lines I changed to accommodate to GoM
+
+    The x and y ranges for figure plots (took the limits of the GoM shapefile I had)
+
+    ```{r}
+    # Set lat/lon window for maps
+    xmin = -98.05 #CHANGED
+    xmax = -80.43 #CHANGED
+    ymin = 17.40 #CHANGED
+    ymax = 31.46 #CHANGED
+    ```
+
+    I substituted the shapefile that was provided in the indicator text with a GoM version of it. To do this I double checked that it was in the same format as the one used originally. For this use it needed to be the geometry of a polygon of class sf. To do this I used the function st_as_sf() from sf.
+
+    ```{r, warning=F, message=F, results= "hide"}
+    #EPU shapefile
+    # ne_epu_sf <- ecodata::epu_sf %>%  dplyr::filter(EPU %in% c("GOM","GB"))
+    # ne_epu_sf <- ecodata::epu_sf[4,4]
+
+
+    #OUR REGION
+    GoM_shp<-rgdal::readOGR("C:/Users/brittanytroast/Dropbox/Work/Seaside Chats/Tutorials/Pics/Adapt NE SoE Indic/GoM Shapefile/GoM.shp")
+    GoM_shp_sf<-sf::st_as_sf(GoM_shp)
+    GoM_shp_sf<-GoM_shp_sf$geometry
+
+    ```
+
+    There was a second set of lat/lon ranges that I also changed. This just overrides the above code, but I changed it anyway.
+
+    ```{r}
+    # Set lat/lon window for maps
+    xmin = -98.05 #CHANGED
+    xmax = -80.43 #CHANGED
+    ymin = 17.40 #CHANGED
+    ymax = 31.46 #CHANGED
+    ```
+
+    The last code I found addressing the geographic area of the indicator was in the ggplot code chunk where it calls on the shapefile. Since I have already renamed and loaded in a new shapefile I made sure to swap out the new name (or you could leave it as the same name and skip this step) in the plotting code.
+
+    ```{r, message=F, warning=F, eval=F}
+      ggplot2::geom_sf(data = GoM_shp_sf, fill = "transparent", size = map.lwd)
+
+
+    ```
+
+-   With these changes I reran the code hoping to have the new indicator with GoM SST anomalies.
+
+    ```{r, message=F, warning=F}
+
+    # Set lat/lon window for maps
+    xmin = -98.05 #CHANGED
+    xmax = -80.43 #CHANGED
+    ymin = 17.40 #CHANGED
+    ymax = 31.46 #CHANGED
+    xlims <- c(xmin, xmax)
+    ylims <- c(ymin, ymax)
+    #Time series constants
+    shade.alpha <- 0.3
+    shade.fill <- "lightgrey"
+    lwd <- 1
+    pcex <- 2
+    trend.alpha <- 0.5
+    trend.size <- 2
+    hline.size <- 1
+    hline.alpha <- 0.35
+    hline.lty <- "dashed"
+    label.size <- 5
+    hjust.label <- 1.5
+    letter_size <- 4
+    feeding.guilds <- c("Apex Predator","Piscivore","Planktivore","Benthivore","Benthos")
+    x.shade.min <- 2012
+    x.shade.max <- 2022
+    #Function for custom ggplot facet labels
+    label <- function(variable,value){
+      return(facet_names[value])
+    }
+
+
+    #OUR REGION
+    GoM_shp<-rgdal::readOGR("C:/Users/brittanytroast/Dropbox/Work/Seaside Chats/Tutorials/Pics/Adapt NE SoE Indic/GoM Shapefile/GoM.shp")
+    GoM_shp_sf<-sf::st_as_sf(GoM_shp)
+    shp_geom<-GoM_shp_sf$geometry
+
+    #Map line parameters
+    map.lwd <- 0.4
+    # Set lat/lon window for maps
+    xmin = -98.05 #CHANGED
+    xmax = -80.43 #CHANGED
+    ymin = 17.40 #CHANGED
+    ymax = 31.46 #CHANGED
+    xlims <- c(xmin, xmax)
+    ylims <- c(ymin, ymax)
+
+    sst <- ecodata::seasonal_sst_anomaly_gridded  #WHERE YOU LOAD THE DATA FROM ECODATA
+    sst$Season <- factor(sst$Season, levels = c("Winter",
+                                                "Spring",
+                                                "Summer",
+                                                "Fall"))
+
+    sst<- sst %>% dplyr::mutate(Value = replace(Value, Value > 5, 5))
+    sst_map <- 
+      ggplot2::ggplot() +
+      ggplot2::geom_tile(data = sst, aes(x = Longitude, y = Latitude,fill = Value)) +
+      ggplot2::geom_sf(data = ecodata::coast, size = map.lwd) +
+      ggplot2::geom_sf(data = GoM_shp_sf, fill = "transparent", size = map.lwd) +
+      ggplot2::scale_fill_gradient2(name = "Temp./nAnomaly (C)",
+                           low = scales::muted("blue"),
+                           mid = "white",
+                           high = scales::muted("red"),
+                           limits = c(-5,5), 
+                           labels = c("<-5", "-2", "0", "2", ">5")) +
+      ggplot2::coord_sf(xlim = xlims, ylim = ylims) +
+      ggplot2::facet_wrap(Season~.) +
+      ecodata::theme_map() +
+      ggplot2::ggtitle("SST anomaly (2022)") +
+      ggplot2::xlab("Longitude") +
+      ggplot2::ylab("Latitude") +
+      ggplot2::theme(panel.border = element_rect(colour = "black", fill=NA, size=0.75),
+            legend.key = element_blank(),
+            axis.title = element_text(size = 11),
+            strip.background = element_blank(),
+            strip.text=element_text(hjust=0),
+            axis.text = element_text(size = 8), 
+            axis.title.y = element_text(angle = 90))+
+      ecodata::theme_title()
+
+    sst_map 
+
+    ```
+
+-   As you can see in the output, we are getting really close with figures of our study area, however, with a glaring lack of actual SST anomaly data.
+
+-   From here I took a further look at the SST Anomaly that data that came in the ecodata package and looked at the Lat/Long range to figure out what area it covers and realized that the package did not include the data coverage I needed.
+
+    ```{r}
+    head(ecodata::seasonal_sst_anomaly_gridded)
+
+    range(ecodata::seasonal_sst_anomaly_gridded$Latitude)
+    range(ecodata::seasonal_sst_anomaly_gridded$Longitude)
+
+    ```
+
+-   I then went on a hunt to figure out more about where this data came from and happened upon the NE SoE Technical document which describes every indicator and points of contact, details analysis, and gives data sources.
+
+    [NE SoE Technical Document](https://noaa-edab.github.io/tech-doc/)
+
+    [Specific Link in Tech Doc to Indicator of Interest](https://noaa-edab.github.io/tech-doc/seasonal-sst-anomalies.html)
+
+    ![Excerpt from NE SoE Technical Document on SST Anomaly Data extraction with links to code to do so.](images/SST%20Anom%20Data%20Analysis.png)
+
+-   This document gave the data sources needed for the analysis and linked the code they used to analyze and format the data for use with the above code. (The gridded link in this section of the tech doc)
+
+    [Link to Code for processing the NOAA OISST SST Anomaly Data](https://github.com/NOAA-EDAB/ecodata/blob/master/data-raw/get_seasonal_oisst_anom_gridded.R)
+
+### 5. Process New SST Anomaly Data for the GoM
+
+-   Now we just need to follow the steps in the code to get and process the same data for our specified region.
+
+-   When examining the code the first thing I noticed was the code saying "here" which linked this code to the ecodata repo
+
+    -   To get around this I forked the ecodata repo to my computer so that it could access it however this is not necessary
+
+    -   Upon reviewing the code I realized this was just providing a file directory and since we are providing our own directory we can just ignore those two lines of code (comment them out with a \# so that they do not run)
+
+![Code showing the here::here code](images/Here%20Code.png){fig-align="center" width="450"}
+
+-   In the code there is a chunk warning that you must separately download two data files (with link provided) and alter the code to the directory where you have saved the files.
+
+    ![Portion of code detailing that you need to locally download the SST data since it is too large to host in the ecodata repo.](images/Download%20Data.png)
+
+    [Link to NOAA OI SST Anomaly data source](https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html)
+
+    -   Download the two files as instructed in code
+
+    -   DOUBLE CHECK that your filepath matches where you have it stored before continuing to next chunk of code. Remove the ltm.dir with your personal file path
+
+-   I double checked the rest of the code for any spatial things I may need to change and there was none. There was a chunk of code at the end that addressed heatwaves that I did not need and did not run.
+
+-   Running the code produced a dataset of SST anomalies for the GoM in the correct format for using the SoE indicator code.
+
+    -   I have provided the code that I used for this data with the same disclaimer that you must download the data separately.
+
+    -   Places with ALL CAPS comments are what I changed. They are in the extent, naming the file.dir argument, adding file.dir in the file.path() function, and "commenting out" unnecessary code at the end of the script
+
+    ```{r, eval=F, warning=F, message=F}
+    #Processing for spatial SST anomaly
+
+    library(dplyr)
+    library(raster)
+    library(sf)
+    library(ggplot2)
+    library(ncdf4)
+    library(reshape2)
+
+    rast_prep <- function(r){
+      r <- rotate(r) #Rotate
+      r <- crop(r, extent(-98.05,-80.43,17.40,31.46)) #Crop (CHANGED FOR GOM)
+      return(r)
+    }
+
+
+    crs <- "+proj=longlat +lat_1=35 +lat_2=45 +lat_0=40+lon_0=-77 +x_0=0 +y_0=0 +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0"
+
+    seasonal_sst_anomaly_gridded_day_nc <-"sst.day.mean.2022.nc"
+    seasonal_sst_anomaly_gridded_ltm_nc <- "sst.day.mean.ltm.1982-2010.nc"
+
+    #These data are large files that are not included among ecodata source files. They are accessible
+    #here: https://www.esrl.noaa.gov/psd/data/gridded/data.noaa.oisst.v2.highres.html
+    # but are removed after use as they are too large to store on github
+
+    file.dir<-"C:/Users/brittanytroast/Documents/GitHub/Testing/Testing/SST Data" #ADDED TO DIRECT WHERE FILES ARE
+
+    sst.2019 <- rast_prep(stack(file.path(file.dir, seasonal_sst_anomaly_gridded_day_nc))) #CHECK TO MAKE SURE FILEPATH IS CORRECT
+    ltm <- rast_prep(stack(file.path(file.dir, seasonal_sst_anomaly_gridded_ltm_nc))) #CHECK TO MAKE SURE FILEPATH IS CORRECT
+
+    winter.ltm <- ltm[[1:90]]
+    spring.ltm <- ltm[[91:181]]
+    summer.ltm <- ltm[[182:273]]
+    fall.ltm <- ltm[[274:365]]
+
+    winter.anom <- sst.2019[[1:90]] - winter.ltm
+    spring.anom <- sst.2019[[91:181]] - spring.ltm
+    summer.anom <- sst.2019[[182:273]] - summer.ltm
+    fall.anom <- sst.2019[[274:342]] - fall.ltm ### switched to cover just dates included in 2022.nc up to Dec 9th.
+
+
+    rast_process <- function(r, season){
+      r <- raster::stackApply(r, indices = rep(1,nlayers(r)),mean) #Find mean anomaly
+      crs(r) <- crs #Add SOE CRS
+      ### Remove smoothing steps due to "over smoothing'
+      #r <- disaggregate(r, 5) #interpolate step 1 - create higher res grid
+      #r <- focal(r, w=matrix(1,nrow=5,ncol=5), fun=mean,
+      #           na.rm=TRUE, pad=TRUE) #interpolate step 2 - moving window
+      r <- as(r, "SpatialPointsDataFrame") #Convert to ggplot-able object
+      r <- as.data.frame(r)
+      r <- r %>%
+        reshape2::melt(id = c("y","x")) %>%
+        dplyr::rename(Latitude = y, Longitude = x) %>%
+        dplyr::select(-variable) %>%
+        dplyr::mutate(Season = season) %>%
+        dplyr::rename(Value = value)
+
+      return(r)
+    }
+
+    #CHANGED NAME TO _GOM SO IT WASNT THE SAME AS BEFORE
+    seasonal_sst_anomaly_gridded_GoM <-
+      rbind(rast_process(winter.anom,season = "Winter"),
+          rast_process(spring.anom,season = "Spring"),
+          rast_process(summer.anom, season = "Summer"),
+          rast_process(fall.anom, season = "Fall")) %>%
+      tibble::as_tibble()
+
+    #Don't need... here to write metadata
+    # # metadata ----
+    # attr(seasonal_sst_anomaly_gridded, "tech-doc_url") <- "https://noaa-edab.github.io/tech-doc/seasonal-sst-anomalies.html"
+    # attr(seasonal_sst_anomaly_gridded, "data_files")   <- list(
+    #   seasonal_sst_anomaly_gridded_day_nc = seasonal_sst_anomaly_gridded_day_nc,
+    #   seasonal_sst_anomaly_gridded_ltm_nc = seasonal_sst_anomaly_gridded_ltm_nc)
+    # attr(seasonal_sst_anomaly_gridded, "data_steward") <- c(
+    #   "Kimberly Bastille <kimberly.bastille@noaa.gov>")
+    # attr(seasonal_sst_anomaly_gridded, "plot_script") <- list(
+    #   `ltl_MAB_shelf` = "LTL_MAB.Rmd-shelf-seasonal-sst-anomaly-gridded.R",
+    #   `ltl_NE` = "LTL_NE.Rmd-seasonal-sst-anomaly-gridded.R")
+    #
+    # usethis::use_data(seasonal_sst_anomaly_gridded, overwrite = T)
+
+
+    # #### Get Gridded Daily Max values for Marine Heatwaves
+    #
+    # mab_peak_hw <- sst.2019[[210]] - summer.ltm## 7/28/2020
+    # gb_peak_hw <- sst.2019[[227]] - summer.ltm## 8/14/2020
+    # gom_peak_hw <- sst.2019[[214]] - summer.ltm## 8/2/2020
+    #
+    # rast_process_epu <- function(r, epu){
+    #   r <- raster::stackApply(r, indices = rep(1,nlayers(r)),mean) #Find mean anomaly
+    #   crs(r) <- crs #Add SOE CRS
+    #   ### Remove smoothing steps due to "over smoothing'
+    #   #r <- disaggregate(r, 5) #interpolate step 1 - create higher res grid
+    #   #r <- focal(r, w=matrix(1,nrow=5,ncol=5), fun=mean,
+    #   #           na.rm=TRUE, pad=TRUE) #interpolate step 2 - moving window
+    #   r <- as(r, "SpatialPointsDataFrame") #Convert to ggplot-able object
+    #   r <- as.data.frame(r)
+    #   r <- r %>%
+    #     reshape2::melt(id = c("y","x")) %>%
+    #     dplyr::rename(Latitude = y, Longitude = x) %>%
+    #     dplyr::select(-variable) %>%
+    #     dplyr::mutate(EPU = epu) %>%
+    #     dplyr::rename(Value = value)
+    #
+    #   return(r)
+    # }
+    #
+    #
+    # heatwave_peak_date <-
+    #   rbind(rast_process_epu(mab_peak_hw,epu = "MAB"),
+    #         rast_process_epu(gb_peak_hw ,epu = "GB"),
+    #         rast_process_epu(gom_peak_hw, epu = "GOM"))
+    #
+    # usethis::use_data(heatwave_peak_date, overwrite = T)
+
+    ```
+
+### 6. Final Indicator Plotting
+
+-   Now that we have a new dataset for the GoM region all we have to do is run the previous code with the new data. I have saved the smaller GoM SST Anomaly dataset for convenience.
+
+```{r, warning=F, message=F}
+# Set lat/lon window for maps
+xmin = -98.05 #CHANGED
+xmax = -80.43 #CHANGED
+ymin = 17.40 #CHANGED
+ymax = 31.46 #CHANGED
+xlims <- c(xmin, xmax)
+ylims <- c(ymin, ymax)
+#Time series constants
+shade.alpha <- 0.3
+shade.fill <- "lightgrey"
+lwd <- 1
+pcex <- 2
+trend.alpha <- 0.5
+trend.size <- 2
+hline.size <- 1
+hline.alpha <- 0.35
+hline.lty <- "dashed"
+label.size <- 5
+hjust.label <- 1.5
+letter_size <- 4
+feeding.guilds <- c("Apex Predator","Piscivore","Planktivore","Benthivore","Benthos")
+x.shade.min <- 2012
+x.shade.max <- 2022
+#Function for custom ggplot facet labels
+label <- function(variable,value){
+  return(facet_names[value])
+}
+
+
+#OUR REGION
+GoM_shp<-rgdal::readOGR("C:/Users/brittanytroast/Dropbox/Work/Seaside Chats/Tutorials/Pics/Adapt NE SoE Indic/GoM Shapefile/GoM.shp")
+GoM_shp_sf<-sf::st_as_sf(GoM_shp)
+GoM_shp_sf<-GoM_shp_sf$geometry
+
+#Map line parameters
+map.lwd <- 0.4
+# Set lat/lon window for maps
+xmin = -98.05 #CHANGED
+xmax = -80.43 #CHANGED
+ymin = 17.40 #CHANGED
+ymax = 31.46 #CHANGED
+xlims <- c(xmin, xmax)
+ylims <- c(ymin, ymax)
+
+# sst <- ecodata::seasonal_sst_anomaly_gridded  #WHERE YOU LOAD THE DATA FROM ECODATA
+sst<-read.csv("C:/Users/brittanytroast/Dropbox/Work/Seaside Chats/Tutorials/Data/SST Anom GoM.csv") #GoM SST ANOM DAT FROM PREVIOUS FUNCTION
+
+sst$Season <- factor(sst$Season, levels = c("Winter",
+                                            "Spring",
+                                            "Summer",
+                                            "Fall"))
+
+sst<- sst %>% dplyr::mutate(Value = replace(Value, Value > 5, 5))
+sst_map <- 
+  ggplot2::ggplot() +
+  ggplot2::geom_tile(data = sst, aes(x = Longitude, y = Latitude,fill = Value)) +
+  ggplot2::geom_sf(data = ecodata::coast, size = map.lwd) +
+  ggplot2::geom_sf(data = GoM_shp_sf, fill = "transparent", size = map.lwd) +
+  ggplot2::scale_fill_gradient2(name = "Temp./nAnomaly (C)",
+                       low = scales::muted("blue"),
+                       mid = "white",
+                       high = scales::muted("red"),
+                       limits = c(-5,5), 
+                       labels = c("<-5", "-2", "0", "2", ">5")) +
+  ggplot2::coord_sf(xlim = xlims, ylim = ylims) +
+  ggplot2::facet_wrap(Season~.) +
+  ecodata::theme_map() +
+  ggplot2::ggtitle("SST anomaly (2022)") +
+  ggplot2::xlab("Longitude") +
+  ggplot2::ylab("Latitude") +
+  ggplot2::theme(panel.border = element_rect(colour = "black", fill=NA, size=0.75),
+        legend.key = element_blank(),
+        axis.title = element_text(size = 11),
+        strip.background = element_blank(),
+        strip.text=element_text(hjust=0),
+        axis.text = element_text(size = 8), 
+        axis.title.y = element_text(angle = 90))+
+  ecodata::theme_title()
+
+sst_map 
+```
+
+-   There you have it! The same indicator from the NE SoE report but adapted for the GoM.
+
+## Steps now that we have more information
+
+After going through the previous process I am more informed and would use a different process if I wanted to adapt a new indicator. I will briefly describe these steps here.
+
+### 1. Search for indicators in the technical document
+
+-   I would start my search for indicators in the technical document. They have many more indicators than the reports do, as all indicators are not published. Plus I will get a good overview of the methods and datasets used in analysis. The technical report also has example figures for reference.
+
+[NE SoE Technical Document](https://noaa-edab.github.io/tech-doc/)
+
+### 2. Replicate Indicator
+
+-   I would replicate the indicator using the data provided by the ecodata package and using the associated code in the "chunk-scripts" folder in the ecodata repository.
+
+-   If any argument was missing I would search for that argument in the repo (as I had to do previously with the setup code for x.min.shade)
+
+### 3. Check Data
+
+-   Next, I would check the extent of the data provided in the ecodata package and determine if it will work for my study area.
+
+-   If the data do not cover my study area I would refer to the information provided by the technical data and follow links to the code that will grab and format the data for my preferred region.
+
+### 4. Plotting
+
+-   With the new data I would triple check the code for the indicator and make sure there are not any geographic or other variables that need to be altered for my region.
+
+-   With these changes hopefully I get the desired indicator for my region!
