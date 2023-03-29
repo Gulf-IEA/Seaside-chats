@@ -19,7 +19,7 @@ First & Third Friday of every month from 1-3 pm
 | 1 | 2/17/23 | Introduction |
 | 2 | 3/3/23 | Kim Bastille presents: Automation Framework from the NE SOE Report |
 | 3 | 3/17/23 | Brittany: Adapt NE SOE indicator |
-| 4 | 3/31/23 | Brendan: Automated data pulling in R |
+| 4 | 3/31/23 | Molly Stevens: NOAA's github policies & Brendan: Automated data pulling in R |
 
 **Recommending a topic for future seaside chats:**
 
