@@ -1,0 +1,217 @@
+---
+title: "Automated data download"
+author: "Brendan Turley"
+format: 
+   html: 
+     toc: true
+     toc-location: right
+     theme: zephyr
+code-fold: true
+self-contained: true
+message: false
+error: false
+warning: false
+---
+
+This is a quick tutorial on different ways to download data for use in [R](https://www.r-project.org). While there are lots of different types of data and different data sources (we could spend multiple sessions talking about just that), this will focus on gridded data easily accessible from NOAA stored in [NetCDF](https://www.unidata.ucar.edu/software/netcdf/) format following the [Adapt NE SOE Indicator tutorial](http://htmlpreview.github.io/?https://github.com/Gulf-IEA/Seaside-chats/blob/main/Tutorials/Adapt%20NE%20SoE%20Indicator.html) by downloading OISST anomaly data.
+
+First, some R housekeeping by loading needed libraries. I will be keeping this simple by using minimal packages (sorry tidyverse folks).
+
+```{r}
+library(cmocean)
+library(fields)
+library(ncdf4)
+library(rerddap)
+library(rgdal)
+```
+
+## 1. Manual download and plotting
+
+The NEFSC Ecodata package pulls the data from [NOAA's Physical Science Laboratory website](https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html). You can download the data manually by selecting the download daily SST anomaly [link](https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2.highres/). Then, download the 2023 daily SST anomaly [netcdf](https://psl.noaa.gov/thredds/catalog/Datasets/noaa.oisst.v2.highres/catalog.html?dataset=Datasets/noaa.oisst.v2.highres/sst.day.anom.2023.nc) select *'HTTPServer'* to download the file on to you computer and open Netcdf file in R like this:
+
+```{r}
+setwd('~/Downloads')
+
+data <- nc_open('sst.day.anom.2023.nc')
+
+data
+```
+
+Now, lets pull out the dimensional variables: time, longitude, and latitude.
+
+```{r}
+time <- ncvar_get(data, 'time')
+time <- as.Date(time, origin = '1800-01-01 00:00:00')
+
+lon <- ncvar_get(data, 'lon')
+lat <- ncvar_get(data, 'lat')
+```
+
+Then pull the missing data value and SST anomaly data, then assign the missing values and check out the dimensions.
+
+```{r}
+missing <- ncatt_get(data, 'anom' ,'missing_value')
+ssta <- ncvar_get(data, 'anom')
+
+ssta[which(ssta == missing$value)] <- NA
+
+dim(ssta)
+```
+
+The order of the dimension are lon, lat and, time. That's global data, but we only want the Gulf of Mexico in this example. Define the region of interest, extract only the important bits, and plot.
+
+```{r}
+# define GOM
+lonbox_e <- -79 + 360
+lonbox_w <- -99 + 360
+latbox_n <- 31
+latbox_s <- 17.5
+
+# indices for GOM lon/lat
+ind_lon <- which(lon>=lonbox_w & lon<=lonbox_e)
+ind_lat <- which(lat>=latbox_s & lat<=latbox_n)
+
+# only extract GOM
+ssta <- ncvar_get(data, 'anom',
+                  start = c(ind_lon[1], ind_lat[1], 1),
+                  count = c(length(ind_lon), length(ind_lat), length(time)))
+
+ssta[which(ssta == missing$value)] <- NA
+
+image(ssta[ , , 100])
+```
+
+Looks like the Gulf of Mexico. But let's make a prettier plot.
+
+```{r}
+### load map
+setwd("~/Desktop/professional/biblioteca/data/shapefiles/ne_10m_admin_0_countries")
+world <- readOGR('ne_10m_admin_0_countries.shp')
+
+imagePlot(lon[ind_lon] - 360,
+          lat[ind_lat],
+          ssta[ , , 100],
+          asp = 1, las = 1, xlab = 'Longitude', ylab = 'Latitude',
+          col = cmocean('balance')(50), breaks = seq(-5,5,.2))
+plot(world, add=T, col = 'gray70')
+```
+
+## 2. Automated download via THREDDS/OpenDAP
+
+Now lets do this via [THREDDS](https://www.unidata.ucar.edu/software/tds/) and [OpenDAP](https://www.opendap.org). You can go to the [THREDDS server catalog](https://psl.noaa.gov/thredds/catalog/Datasets/noaa.oisst.v2.highres/catalog.html). Click on the daily SST anomaly for 2023 [link](https://psl.noaa.gov/thredds/catalog/Datasets/noaa.oisst.v2.highres/catalog.html?dataset=Datasets/noaa.oisst.v2.highres/sst.day.anom.2023.nc), then click the [OpenDAP link](https://psl.noaa.gov/thredds/dodsC/Datasets/noaa.oisst.v2.highres/sst.day.mean.2023.nc.html). Here you can view all the metadata for the file. Find the *Data URL* field, copy that link, and paste into R. From there you can open the Netcdf file directly in R without manual download and extract everything like we did above with the same code.
+
+```{r}
+rm(list=ls()) # sanity check
+
+### load map
+setwd("~/Desktop/professional/biblioteca/data/shapefiles/ne_10m_admin_0_countries")
+world <- readOGR('ne_10m_admin_0_countries.shp')
+
+### data URL
+url <- 'http://psl.noaa.gov/thredds/dodsC/Datasets/noaa.oisst.v2.highres/sst.day.anom.2023.nc'
+
+data <- nc_open(url)
+
+data
+
+### get dims
+time <- ncvar_get(data, 'time')
+time <- as.Date(time, origin = '1800-01-01 00:00:00')
+
+lon <- ncvar_get(data, 'lon')
+lat <- ncvar_get(data, 'lat')
+
+### get missing value
+missing <- ncatt_get(data, 'anom' ,'missing_value')
+
+# define GOM
+lonbox_e <- -79 + 360
+lonbox_w <- -99 + 360
+latbox_n <- 31
+latbox_s <- 17.5
+
+# indices for GOM lon/lat
+ind_lon <- which(lon>=lonbox_w & lon<=lonbox_e)
+ind_lat <- which(lat>=latbox_s & lat<=latbox_n)
+
+# only extract GOM
+ssta <- ncvar_get(data,'anom',
+                  start=c(ind_lon[1],ind_lat[1],1),
+                  count=c(length(ind_lon),length(ind_lat),length(time)))
+ssta[which(ssta == missing$value)] <- NA
+dim(ssta)
+
+imagePlot(lon[ind_lon] - 360,
+          lat[ind_lat],
+          ssta[ , , 100],
+          asp = 1, las = 1, xlab = 'Longitude', ylab = 'Latitude',
+          col = cmocean('balance')(50), breaks = seq(-5,5,.2))
+plot(world, add=T, col = 'gray70')
+```
+
+Should be the exact thing as in the first section.
+
+## 3. Automated download via ERDDAP
+
+From [NOAA NCEI Climate Data Records](https://www.ncei.noaa.gov/products/climate-data-records/sea-surface-temperature-optimum-interpolation) there is a link to an [ERDDAP server](https://www.ncei.noaa.gov/erddap/search/index.html?page=1&itemsPerPage=1000&searchFor=OISST) with this dataset. Since we're interested in 2023, use the Prelimary data. From there, you can generate an API link to download the part you wnat, but someone made a handy [ERDDAP R package](https://docs.ropensci.org/rerddap/). We're only going to use the package here. From the ERDDAP server all you need is the *Dataset ID*. Paste that into the RERDDAP *info* function and specify which ERDDAP server you want:
+
+```{r}
+ssta_pull <- info('ncdc_oisst_v2_avhrr_prelim_by_time_zlev_lat_lon',
+                  url = 'https://www.ncei.noaa.gov/erddap/')
+ssta_pull
+```
+
+Now define the spatial temporal section you want and extract:
+
+```{r}
+latitude = c(latbox_s, latbox_n)
+longitude = c(lonbox_w, lonbox_e)
+
+ssta_grab <- griddap(ssta_pull,
+                     time = c('2023-03-29', '2023-04-10'),
+                     latitude = latitude,
+                     longitude = longitude,
+                     fields = 'anom')
+ssta_grab
+```
+
+The output format is not convenient to plot as I have been plotting, so I made a function rearrange the output to be more how I like it:
+
+```{r}
+erddap_extract <- function(data, info, parameter){
+  data_temp <- data$data
+  ind_extract <- which(names(data_temp)==parameter)
+  time_step <- unique(data_temp$time)
+  lon <- data$summary$dim$longitude$vals
+  lat <- data$summary$dim$latitude$vals
+  
+  new_data <- array(data_temp[,ind_extract], 
+                    c(length(lon),
+                      length(lat),
+                      length(time_step)))
+  
+  row_ind <- which(info$alldata$NC_GLOBAL$attribute_name=='title')
+  col_ind <- which(colnames(info$alldata$NC_GLOBAL)=='value')
+  name <- info$alldata$NC_GLOBAL[row_ind,col_ind]
+  name <- unlist(strsplit(name,split=','))
+  return(list(data = new_data,
+              lon = lon,
+              lat = lat,
+              time = time_step,
+              name = name))
+}
+```
+
+Then extract the data, assign NAs to NaN (the plotting function didn't like NaN), and plot like before:
+
+```{r}
+ssta_m <- erddap_extract(ssta_grab,ssta_pull,'anom')
+ssta_m$data[which(ssta_m$data=='NaN')] <- NA
+
+imagePlot(ssta_m$lon - 360,
+          ssta_m$lat,
+          ssta_m$data[ , , 13],
+          asp = 1, las = 1, xlab = 'Longitude', ylab = 'Latitude',
+          col = cmocean('balance')(50), breaks = seq(-5,5,.2))
+plot(world, add=T, col = 'gray70')
+```
