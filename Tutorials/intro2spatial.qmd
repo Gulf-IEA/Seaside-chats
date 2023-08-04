@@ -1,0 +1,153 @@
+---
+title: "Intro to Spatial"
+author: "Brendan Turley"
+format: 
+   html: 
+     toc: true
+     toc-location: right
+     theme: zephyr
+code-fold: true
+self-contained: true
+message: false
+error: false
+warning: false
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_knit$set(root.dir ='~/Desktop/professional/projects/gom_iea_seaside/spatial_share_data')
+```
+
+## Introduction
+
+This is a quick tutorial on manipulating spatial data in R. I will focus on 4 valuable packages: [leaflet](https://rstudio.github.io/leaflet/), [terra](https://rspatial.github.io/terra/reference/terra-package.html), [sf](https://r-spatial.github.io/sf/), and [spatstat](https://spatstat.org/).
+
+First, some R housekeeping by loading needed libraries. I will be keeping this simple by using minimal packages (sorry tidyverse folks).
+
+```{r}
+library(cmocean)
+library(leaflet)
+library(scales)
+library(sf)
+library(spatstat)
+library(terra)
+```
+
+Next, lets import some data. I have been working with [BOEM's oil rig dataset](https://www.data.boem.gov/Platform/PlatformStructures/Default.aspx) in the Gulf of Mexico. I removed rows that did not have lon/lat data and then turned it into an sf object using the [st_as_sf](https://r-spatial.github.io/sf/reference/st_as_sf.html) function in the sf package.
+
+```{r}
+platforms <- read.csv('PlatStruc2.csv')
+platforms <- platforms[-which(is.na(platforms$Longitude)), ]
+platforms_sf <- st_as_sf(platforms,
+                        coords = c("Longitude", "Latitude"),
+                        agr = "identity"
+                        )
+
+plot(platforms$Longitude, 
+     platforms$Latitude,
+     pch = 16, 
+     cex = .3, 
+     col = alpha('gray20', .3),
+     asp = 1)
+```
+
+## Let's rasterize
+
+A important skill is to take data in tabular format (like from a csv) and turn into a raster. This is pretty easy with the [rast](https://search.r-project.org/CRAN/refmans/terra/html/rast.html) and [rasterize](https://search.r-project.org/CRAN/refmans/terra/html/rasterize.html) functions in the terra package. First, I need to create an empty raster to supply the values to; however, you cane take an existing raster and create a new one based upon the existing ones spatial dimensions and resolution. For this example, I am essentially creating a 2D histogram by counting, or rather using the length function, the number of oil rigs per raster cell. Any function could be used in the rasterize function such as mean, median, or even a user supplied function. Note, I am using the platforms that I turned into an sf object to to this. Then I check the coordinate reference system. Note that the rast function automatically supply a CRS, you can change this if needed.
+
+```{r}
+r <- rast(
+  xmin = (-98), xmax = (-87),
+  ymin = (25), ymax = (31),
+  ncols = length(87:98) * 10, 
+  nrows = length(25:31) * 10,
+  )
+plat_rast <- rasterize(platforms_sf,
+                       r,
+                       "Area.Code",
+                       fun = length
+                       )
+crs(plat_rast)
+```
+
+Always plot your results to see if they make sense.
+
+```{r}
+plot(plat_rast, 
+     col = cmocean('turbid')(100))
+```
+
+## Customized bathymetric shapefile
+
+Say your interested in creating a shapefile that only encompasses the continential shelf out to 100 m depth. This is easy. First, import bathymetry select the depth range of interest and make it a polygon using the [as.polygons](https://rdrr.io/cran/terra/man/as.polygons.html) function in the terra package. I downloaded a subsetted version of [NOAA's ETOPO bathymetry](https://www.ncei.noaa.gov/products/etopo-global-relief-model). There are other ways to get bathymetry like THREDDS, ERDDAP, or the [marmap r package](https://cran.r-project.org/web/packages/marmap/index.html). Next, I will crop it to the extent of the oil rig data and add a little extra on each side to capture the full extent.
+```{r}
+bathy <- rast('etopo1.nc')
+
+plot(bathy)
+mtext('NOAA ETOPO bathymetry')
+
+### isolate shelf
+bathy[values(bathy$Band1) > 0] <- NA
+bathy[values(bathy$Band1) < (-100)] <- NA
+
+plot(bathy,
+     main = 'Continential Shelf cutout')
+
+### set all values to 1; then make into shapefile
+bathy[!is.na(values(bathy$Band1))] <- 1
+bathy2 <- as.polygons(bathy)
+
+
+bathy_c <- crop(bathy2, 
+                ext(min(platforms$Longitude,na.rm=T)-.1,
+                    max(platforms$Longitude,na.rm=T)+.1,
+                    min(platforms$Latitude,na.rm=T)-.1,
+                    max(platforms$Latitude,na.rm=T)+.1)
+)
+
+st_crs(platforms_sf) <- crs(bathy_c)
+ind <- lengths(st_intersects(platforms_sf,st_as_sf(bathy_c)))>0
+
+plot(bathy_c,
+     col = 3,
+     main = 'Continential Shelf shapefile cropped to oil rig location',
+     new=F)
+plot(platforms_sf$geometry[ind],
+     add=T,
+     pch = 16, 
+     cex = .3, 
+     col = alpha('purple', .4))
+```
+
+## Random and uniform points
+
+Using the spatstat package we can make random points or uniformly spaced points within our shapefile.
+
+```{r}
+gom <- st_as_sf(bathy_c)
+ngom <- st_transform(gom, 32615)
+wgom <- as.owin(ngom)
+
+
+### random points
+rpts <- runifpoint(1000,wgom)
+rpts2 <- st_as_sf(data.frame(lon=rpts$x,lat=rpts$y),coords=c('lon','lat'))
+st_crs(rpts2) <- 32615
+rpts2 <- st_transform(rpts2, st_crs(gom))
+rpts2 <- st_multipoint(cbind(unlist(rpts2$geometry)[seq(1,nrow(rpts2)*2,2)],
+                             unlist(rpts2$geometry)[seq(2,nrow(rpts2)*2,2)]))
+
+### uniformly spaced points
+upts <- rsyst(wgom, nx = 100)
+upts2 <- st_as_sf(data.frame(lon=upts$x,lat=upts$y),coords=c('lon','lat'))
+st_crs(upts2) <- 32615
+upts2 <- st_transform(upts2, st_crs(gom))
+upts2 <- st_multipoint(cbind(unlist(upts2$geometry)[seq(1,nrow(upts2)*2,2)],
+                             unlist(upts2$geometry)[seq(2,nrow(upts2)*2,2)]))
+
+
+plot(bathy_c)
+points(rpts2,pch=16,cex=.5,col=alpha(2,.7))
+points(upts2,pch=16,cex=.5,col=alpha(4,.5))
+legend(-89,27,c('random pts','uniform pts'),pch=16,col=c(2,4),bty='n')
+ 
+```
