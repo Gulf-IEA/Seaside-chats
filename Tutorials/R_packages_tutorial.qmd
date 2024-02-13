@@ -1,0 +1,182 @@
+---
+title: "R_Packages_Tutorial"
+format: html
+editor: visual
+self-contained: true
+---
+
+## Posit Webinar: Creating and Sharing R Packages
+
+Tuesday, February 13, 2024
+
+Note: This code won't run all in this qmd file, it is just here to follow along. 
+
+### Resources
+
+-   Ryan at Posit: ryan@posit.co
+
+-   R For Data Science has a new version (Hadley Wickham) - free online
+
+-   R Packages - r-pkgs.org (also a good free resource)
+
+-   Writing an R package from Scratch - 2014 blog post
+
+### Creating a package
+
+First, let's create a silly function:
+
+```         
+cat_function <- function(love=TRUE){
+    if(love==TRUE){
+        print("I love cats!")
+    } else {
+        print("I am not a cool person.")
+    }
+}
+```
+
+#### STEP 1:
+
+Load your package development tools
+
+```         
+library(devtools)
+```
+
+#### STEP 2:
+
+Initialize a new package. Specify the name of the package and where you want to put it. Keep it somewhere pretty high level, not within a lot of sub-folders. This will create the scaffolding for your package.
+
+```         
+usethis::create_package("~/demopackage")
+```
+
+#### STEP 3:
+
+Write the first function
+
+```         
+usethis::use_r("cat_function")
+```
+
+#### STEP 4:
+
+Add the function to the package. This opens a source pane with a new .R script for the function. Paste your code in for the function.
+
+#### STEP 5:
+
+Test the function
+
+```         
+devtools::load_all()
+cat_function(TRUE)
+```
+
+#### STEP 6:
+
+Check that all is well with your package. Can use the code below or run R CMD check in the terminal. We get zero errors which is great but one warning. The warning is at the end (non-standard license specification) - means you don't have a license for your package and you should add one.
+
+```         
+devtools::check()
+```
+
+#### STEP 7:
+
+Add a license. Pick a license, any license! Really doesn't matter which one. But you need one for sharing. The MIT license is the most common one. The code below will add 2 files to your folder with the license info.
+
+```         
+usethis::use_mit_license()
+```
+
+#### STEP 8:
+
+Edit description file. This file was created when we created our package. Open the file and fill out the placeholders for Title, Authors, and Description
+
+#### STEP 9:
+
+Document. Let users know what your function does and how to use it
+
+1.  Open R/cat_function.R
+
+2.  Put the cursor somewhere in the cat_function() function definition
+
+3.  Code --\> Insert roxygen skeleton
+
+4.  8 lines will appear with some placeholders. Parameters are everything inside the function. Return lets readers know what happens with your function. Don't worry about export for now, but add examples
+
+```         
+Now the function looks like this:
+
+#' Cat Love Function
+#'
+#' @param love TRUE or FALSE, do you love cats?
+#'
+#' @return A message that says if you love cats or not
+#' @export
+#'
+#' @examples
+#' cat_function(love = TRUE)
+#' cat_function(love = FALSE)
+cat_function <- function(love=TRUE){
+  if(love==TRUE){
+    print("I love cats!")
+  } else {
+    print("I am not a cool person.")
+  }
+}
+```
+
+Now we want to convert the documentation to a help page
+
+```         
+devtools::document()
+```
+
+Check everything again
+
+```         
+devtools::check()
+```
+
+#### STEP 10:
+
+Install and load package. First restart your R session.
+
+```         
+devtools::install()
+library(demopackage)
+```
+
+#### BONUS STEPS:
+
+-   Use version control (git)
+
+    -   usethis::use_git()
+
+    -   Need to configure git environment first if you haven't already
+
+-   Make sure functions are working properly (testthat)
+
+    -   usethis::use_testthat()
+
+    -   usethis::use_test("cat_function")
+
+    -   Modify the test to see if the function does what you want it to do
+
+    -   devtools::test()
+
+-   Disclose package dependencies
+
+    -   Often packages depend on other packages. If we used the purrr package in our package, need to disclose
+
+-   Create a README
+
+-   How to share a package:
+
+    -   Lots of times the goal is to get packages listen on CRAN. CRAN ensures the quality of the package.
+
+    -   But you don't have to, you can keep it on Github or can use the POSIT package manager
+
+    -   Posit package manager allows you to pull packages from Github, upload locally built packages directly, or serve previous versions of custom packages
+
+    -   NOAA does not have access to Posit Package Manager
