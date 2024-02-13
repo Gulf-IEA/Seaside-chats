@@ -9,7 +9,7 @@ self-contained: true
 
 Tuesday, February 13, 2024
 
-Note: This code won't run all in this qmd file, it is just here to follow along. 
+Note: This code won't run all in this qmd file, it is just here to follow along. Once you create your package R will open a new project. You can just run the code in this tutorial in the Console of that new project.
 
 ### Resources
 
